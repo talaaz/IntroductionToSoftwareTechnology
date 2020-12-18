@@ -1,0 +1,40 @@
+CHIP CPU{
+	IN inM[16],instruction[16],reset; //Indeholder m-værdier, instruktioner og reset-funktionen.
+	OUT outM[16],writeM,addressM[15],pc[15];
+
+	PARTS:
+	
+	PC(in=aOut, load=rtnPC, inc=iPC, reset=reset, out[0..14]=pc);
+
+	ALU(x=dOut, y=aOrM, zx=instruction[11], nx=instruction[10],zy=instruction[9], ny=instruction[8],
+	f=instruction[7], no=instruction[6], out=rtnALU, out=outM, zr=zr, ng=lt);
+	//Skriver til hukommelsen.
+	And(a=instruction[15], b=instruction[3], out=writeM);
+
+
+	Or(a=lt,b=zr,out=opp); //Condtition, der køres indtil reset.
+	Not(in=opp,out=gt);
+
+	And(a=instruction[0], b=gt, out=rtnGt); //Hvis rtnGt > 0.
+	And(a=instruction[1], b=opp, out=rtnEq); //Hvis rtnEq = 0.
+	And(a=instruction[2], b=lt, out=rtnLt); //Hvis rtnLt < 0.
+	
+	Or(a=rtnLt, b=rtnEq, out=continue);
+	Or(a=continue, b=rtnGt, out=jmp);
+
+	And(a=instruction[15], b=jmp, out=rtnPC);
+	Not(in=rtnPC, out=iPC);
+
+	ARegister(in=rtnMux, load=rtnA, out=aOut,out[0..14]=addressM); //Henholdsvis A og D registre.
+	And(a=instruction[4], b=instruction[15], out=rtnD);
+	DRegister(in=rtnALU, load=rtnD, out=dOut);
+
+	Mux16(a[15]=false, a[0..14]=instruction[0..14], b=rtnALU, sel=instruction[15], out=rtnMux);
+	Not(in=instruction[15], out=instA);
+	Or(a=instA, b=instruction[5], out=rtnA);
+	
+	Mux16(a=aOut, b=inM, sel=instruction[12], out=aOrM); //Bestemmer om der skal bruges A eller M.
+
+
+
+}
